@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Railway Fittings QR Generator</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 id="title">QR Code Generator for Track Fittings</h1>
+
+    <div class="toggle-bar">
+      <button id="darkToggle">🌙 Dark Mode</button>
+      <button id="langToggle">🌐 বাংলা</button>
+      <button id="resetType">🔄 New Entry</button>
+    </div>
+
+    <form id="qrForm">
+      <fieldset>
+        <legend>Fitting Details</legend>
+        <select id="type" required>
+          <option value="" disabled selected>-- Select Type --</option>
+          <option value="Rail clips">Rail clips</option>
+          <option value="Rail liners">Rail liners</option>
+          <option value="Fish Plates">Fish Plates</option>
+          <option value="Rail Anchors">Rail Anchors</option>
+          <option value="Rail Dowels">Rail Dowels</option>
+        </select>
+        <input type="text" id="qr_id" placeholder="Auto QR ID" readonly />
+      </fieldset>
+
+      <fieldset>
+        <legend>Vendor Info</legend>
+        <input list="vendors" id="vendor" placeholder="Select or type vendor" required />
+        <datalist id="vendors">
+          <option value="Patil Group">
+          <option value="Utkarsh India">
+          <option value="Raybon Metals Pvt. Ltd.">
+          <option value="Rahee Industries Ltd.">
+          <option value="Chandra Industrial Works">
+          <option value="Jekay International Track Pvt. Ltd.">
+          <option value="Precision Drawell Pvt. Ltd.">
+          <option value="Nirmal Wires (P) Ltd.">
+          <option value="Other">
+        </datalist>
+        <input type="text" id="batch" placeholder="Enter Batch No" required />
+        <input type="date" id="supply_date" readonly />
+        <input type="number" id="warranty" placeholder="Warranty (Years)" required />
+      </fieldset>
+
+      <button type="submit">Generate QR Code</button>
+    </form>
+
+    <div id="qrcode"></div>
+    <div id="print-btn">🖨️ Print QR</div>
+    <div id="aiResult"></div>
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -6,6 +6,7 @@
   <title>Railway Fittings QR Generator</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
   <div class="container">
@@ -13,7 +14,7 @@
 
     <div class="toggle-bar">
       <button id="darkToggle">🌙 Dark Mode</button>
-      <button id="langToggle">🌐 বাংলা</button>
+  
       <button id="resetType">🔄 New Entry</button>
     </div>
 
@@ -28,7 +29,7 @@
           <option value="Rail Anchors">Rail Anchors</option>
           <option value="Rail Dowels">Rail Dowels</option>
         </select>
-        <input type="text" id="qr_id" placeholder="Auto QR ID" readonly />
+        <input type="text" id="qr_id" placeholder="QR ID" readonly />
       </fieldset>
 
       <fieldset>
@@ -54,9 +55,10 @@
     </form>
 
     <div id="qrcode"></div>
-    <div id="print-btn">🖨️ Print QR</div>
+    <div id="print-btn">🖨 Print QR</div>
     <div id="aiResult"></div>
     <div id="toast" class="toast"></div>
+    <div id="export-btn">📥 Export to Excel</div>
   </div>
 
   <script src="script.js"></script>

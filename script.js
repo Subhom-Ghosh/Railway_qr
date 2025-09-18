@@ -1,4 +1,16 @@
+// Global array to store all QR entries
+const qrDataSheet = [];
+
+const prefixMap = {
+  "Rail clips": "RC",
+  "Rail liners": "RL",
+  "Fish Plates": "FP",
+  "Rail Anchors": "RA",
+  "Rail Dowels": "RD"
+};
+
 window.onload = function () {
+  
   const qrForm = document.getElementById("qrForm");
   const printBtn = document.getElementById("print-btn");
   const aiDiv = document.getElementById("aiResult");
@@ -7,18 +19,9 @@ window.onload = function () {
   const langToggle = document.getElementById("langToggle");
   const title = document.getElementById("title");
   const resetTypeBtn = document.getElementById("resetType");
-
+  const exportBtn = document.getElementById("export-btn");
   const typeSelect = document.getElementById("type");
   const qrIdInput = document.getElementById("qr_id");
-
-  // Prefix mapping for QR ID
-  const prefixMap = {
-    "Rail clips": "RC",
-    "Rail liners": "RL",
-    "Fish Plates": "FP",
-    "Rail Anchors": "RA",
-    "Rail Dowels": "RD"
-  };
 
   // Set today's date
   document.getElementById("supply_date").value = new Date().toISOString().split("T")[0];
@@ -28,17 +31,6 @@ window.onload = function () {
     document.body.classList.toggle("dark");
   });
 
-  // Language toggle
-  let isBengali = false;
-  langToggle.addEventListener("click", () => {
-    isBengali = !isBengali;
-    title.innerText = isBengali
-      ? "ট্র্যাক ফিটিংসের জন্য QR কোড জেনারেটর"
-      : "QR Code Generator for Track Fittings";
-    langToggle.innerText = isBengali ? "🌐 English" : "🌐 বাংলা";
-  });
-
-  // Toast notification
   function showToast(message) {
     toast.innerText = message;
     toast.style.display = "block";
@@ -47,7 +39,7 @@ window.onload = function () {
     }, 3000);
   }
 
-  // Get next QR ID based on fitting type
+  // Generate next QR ID
   function getNextId(type) {
     const prefix = prefixMap[type];
     const key = `qr_counter_${prefix}`;
@@ -55,20 +47,17 @@ window.onload = function () {
     const qrId = `${prefix}${String(count).padStart(4, "0")}`;
     return { qrId, nextCount: count + 1, key };
   }
+
+  // Update QR ID when type is selected
   typeSelect.addEventListener("change", () => {
-  const type = typeSelect.value;
-  if (!type || !prefixMap[type]) {
-    qrIdInput.value = "";
-    return;
-  }
-
-  const prefix = prefixMap[type];
-  const key = `qr_counter_${prefix}`;
-  const count = parseInt(localStorage.getItem(key)) || 1;
-  const qrId = `${prefix}${String(count).padStart(4, "0")}`;
-  qrIdInput.value = qrId;
-});
-
+    const type = typeSelect.value;
+    if (!type || !prefixMap[type]) {
+      qrIdInput.value = "";
+      return;
+    }
+    const { qrId } = getNextId(type);
+    qrIdInput.value = qrId;
+  });
 
   // Form submission
   qrForm.addEventListener("submit", function (e) {
@@ -85,15 +74,11 @@ window.onload = function () {
       return;
     }
 
-    // Generate QR ID
     const { qrId, nextCount, key } = getNextId(type);
     qrIdInput.value = qrId;
-
-    // Lock fitting type
     typeSelect.disabled = true;
 
-    // Prepare QR data
-    const data = `
+    const qrData = `
 QR_ID: ${qrId},
 Type: ${type},
 Vendor: ${vendor},
@@ -102,12 +87,9 @@ Supply Date: ${supply_date},
 Warranty: ${warranty} Years
 `;
 
-    // Clear old QR
     document.getElementById("qrcode").innerHTML = "";
-
-    // Generate new QR
     new QRCode(document.getElementById("qrcode"), {
-      text: data,
+      text: qrData,
       width: 200,
       height: 200,
       colorDark: "#000000",
@@ -115,11 +97,9 @@ Warranty: ${warranty} Years
       correctLevel: QRCode.CorrectLevel.H,
     });
 
-    // Show print button
     printBtn.style.display = "block";
     showToast(`✅ QR Code ${qrId} generated!`);
 
-    // AI Analysis
     const expiryYear = new Date(supply_date).getFullYear() + warranty;
     const currentYear = new Date().getFullYear();
 
@@ -136,9 +116,33 @@ Warranty: ${warranty} Years
     }
 
     aiDiv.innerText = "AI Analysis: " + aiMessage;
-
-    // Save updated counter
     localStorage.setItem(key, nextCount);
+
+    const entry = {
+      QR_ID: qrId,
+      Type: type,
+      Vendor: vendor,
+      Batch: batch,
+      Supply_Date: supply_date,
+      Warranty: warranty + " Years",
+      Status: aiMessage,
+      Timestamp: new Date().toLocaleString()
+    };
+
+    // Store entry in array
+    qrDataSheet.push(entry);
+
+    // Send to Google Sheets
+    fetch("https://script.google.com/macros/s/AKfycbwq7LvTOKN3PDvGDIHTEONpEvAQN9KTq36L0NFxV-npDaoro6H9-AWLx-lt_ocDwY5n/exec", {
+      method: "POST",
+      body: JSON.stringify(entry),
+      headers: {
+        "Content-Type": "application/json"
+      }
+    })
+    .then(res => res.text())
+    .then(msg => showToast("📤 Data sent to Google Sheets"))
+    .catch(err => showToast("❌ Failed to send to Sheets"));
   });
 
   // Print QR code
@@ -158,7 +162,7 @@ Warranty: ${warranty} Years
     printWindow.print();
   });
 
-  // Reset type for new entry
+  // Reset for new entry
   resetTypeBtn.addEventListener("click", () => {
     typeSelect.disabled = false;
     typeSelect.value = "";
@@ -167,5 +171,18 @@ Warranty: ${warranty} Years
     aiDiv.innerText = "";
     printBtn.style.display = "none";
     showToast("🔄 Ready for new entry.");
+  });
+
+  // Export all entries to Excel
+  exportBtn.addEventListener("click", () => {
+    if (qrDataSheet.length === 0) {
+      showToast("⚠️ No data to export yet.");
+      return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(qrDataSheet);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "TrackFittingsQR");
+    XLSX.writeFile(workbook, "TrackFittingsQR.xlsx");
   });
 };

@@ -53,7 +53,10 @@ form button {
 form button:hover {
   background: #005ea6;
 }
-
+.container {
+  max-height: 90vh;
+  overflow-y: auto;
+}
 #qrcode {
   margin-top: 20px;
 }
@@ -99,7 +102,18 @@ form button:hover {
   border-radius: 6px;
   cursor: pointer;
 }
-
+#export-btn {
+  margin-top: 15px;
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+#export-btn:hover {
+  background: #218838;
+}
 @media (max-width: 480px) {
   .container {
     width: 90%;

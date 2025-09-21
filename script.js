@@ -1,4 +1,3 @@
-// Global array to store all QR entries
 const qrDataSheet = [];
 
 const prefixMap = {
@@ -6,40 +5,26 @@ const prefixMap = {
   "Rail liners": "RL",
   "Fish Plates": "FP",
   "Rail Anchors": "RA",
-  "Rail Dowels": "RD"
+  "Rail Dowels": "RD",
 };
 
 window.onload = function () {
-  
   const qrForm = document.getElementById("qrForm");
   const printBtn = document.getElementById("print-btn");
-  const aiDiv = document.getElementById("aiResult");
   const toast = document.getElementById("toast");
   const darkToggle = document.getElementById("darkToggle");
-  const langToggle = document.getElementById("langToggle");
-  const title = document.getElementById("title");
   const resetTypeBtn = document.getElementById("resetType");
-  const exportBtn = document.getElementById("export-btn");
   const typeSelect = document.getElementById("type");
   const qrIdInput = document.getElementById("qr_id");
 
-  // Set today's date
-  document.getElementById("supply_date").value = new Date().toISOString().split("T")[0];
+  document.getElementById("supply_date").value = new Date()
+    .toISOString()
+    .split("T")[0];
 
-  // Dark mode toggle
   darkToggle.addEventListener("click", () => {
     document.body.classList.toggle("dark");
   });
 
-  function showToast(message) {
-    toast.innerText = message;
-    toast.style.display = "block";
-    setTimeout(() => {
-      toast.style.display = "none";
-    }, 3000);
-  }
-
-  // Generate next QR ID
   function getNextId(type) {
     const prefix = prefixMap[type];
     const key = `qr_counter_${prefix}`;
@@ -48,7 +33,6 @@ window.onload = function () {
     return { qrId, nextCount: count + 1, key };
   }
 
-  // Update QR ID when type is selected
   typeSelect.addEventListener("change", () => {
     const type = typeSelect.value;
     if (!type || !prefixMap[type]) {
@@ -59,7 +43,6 @@ window.onload = function () {
     qrIdInput.value = qrId;
   });
 
-  // Form submission
   qrForm.addEventListener("submit", function (e) {
     e.preventDefault();
 
@@ -78,17 +61,12 @@ window.onload = function () {
     qrIdInput.value = qrId;
     typeSelect.disabled = true;
 
-    const qrData = `
-QR_ID: ${qrId},
-Type: ${type},
-Vendor: ${vendor},
-Batch: ${batch},
-Supply Date: ${supply_date},
-Warranty: ${warranty} Years
-`;
+    // ✅ Generate QR code with inspection URL
+    const qrData = `https://subhom-ghosh.github.io/inspection/?qr_id=${qrId}`;
 
-    document.getElementById("qrcode").innerHTML = "";
-    new QRCode(document.getElementById("qrcode"), {
+    const qrContainer = document.getElementById("qrcode");
+    qrContainer.innerHTML = "";
+    new QRCode(qrContainer, {
       text: qrData,
       width: 200,
       height: 200,
@@ -99,23 +77,8 @@ Warranty: ${warranty} Years
 
     printBtn.style.display = "block";
     showToast(`✅ QR Code ${qrId} generated!`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
-    const expiryYear = new Date(supply_date).getFullYear() + warranty;
-    const currentYear = new Date().getFullYear();
-
-    let aiMessage = "";
-    if (currentYear > expiryYear) {
-      aiMessage = "❌ Expired – Replace immediately.";
-      aiDiv.style.color = "red";
-    } else if (vendor === "Other") {
-      aiMessage = "⚠️ Unverified Vendor – Extra inspection needed.";
-      aiDiv.style.color = "orange";
-    } else {
-      aiMessage = "✅ Valid – No issue detected.";
-      aiDiv.style.color = "green";
-    }
-
-    aiDiv.innerText = "AI Analysis: " + aiMessage;
     localStorage.setItem(key, nextCount);
 
     const entry = {
@@ -125,27 +88,24 @@ Warranty: ${warranty} Years
       Batch: batch,
       Supply_Date: supply_date,
       Warranty: warranty + " Years",
-      Status: aiMessage,
-      Timestamp: new Date().toLocaleString()
+      Timestamp: new Date().toISOString(),
+      QR_Image: "", // Will be filled after QR renders
     };
 
-    // Store entry in array
     qrDataSheet.push(entry);
 
-    // Send to Google Sheets
-    fetch("https://script.google.com/macros/s/AKfycbwq7LvTOKN3PDvGDIHTEONpEvAQN9KTq36L0NFxV-npDaoro6H9-AWLx-lt_ocDwY5n/exec", {
-      method: "POST",
-      body: JSON.stringify(entry),
-      headers: {
-        "Content-Type": "application/json"
+    // Wait for QR image to render and extract Base64 PNG
+    setTimeout(() => {
+      const qrImg = qrContainer.querySelector("img");
+      if (qrImg) {
+        entry.QR_Image = qrImg.src;
+        sendToSheet(entry);
+      } else {
+        showToast("⚠️ QR image not found.");
       }
-    })
-    .then(res => res.text())
-    .then(msg => showToast("📤 Data sent to Google Sheets"))
-    .catch(err => showToast("❌ Failed to send to Sheets"));
+    }, 500);
   });
 
-  // Print QR code
   printBtn.addEventListener("click", function () {
     const qrDiv = document.getElementById("qrcode").innerHTML;
     const printWindow = window.open("", "", "height=400,width=400");
@@ -162,27 +122,40 @@ Warranty: ${warranty} Years
     printWindow.print();
   });
 
-  // Reset for new entry
   resetTypeBtn.addEventListener("click", () => {
     typeSelect.disabled = false;
     typeSelect.value = "";
     qrIdInput.value = "";
     document.getElementById("qrcode").innerHTML = "";
-    aiDiv.innerText = "";
     printBtn.style.display = "none";
     showToast("🔄 Ready for new entry.");
   });
-
-  // Export all entries to Excel
-  exportBtn.addEventListener("click", () => {
-    if (qrDataSheet.length === 0) {
-      showToast("⚠️ No data to export yet.");
-      return;
-    }
-
-    const worksheet = XLSX.utils.json_to_sheet(qrDataSheet);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "TrackFittingsQR");
-    XLSX.writeFile(workbook, "TrackFittingsQR.xlsx");
-  });
 };
+
+function showToast(message) {
+  const toast = document.getElementById("toast");
+  toast.innerText = message;
+  toast.style.display = "block";
+  setTimeout(() => {
+    toast.style.display = "none";
+  }, 3000);
+}
+
+function sendToSheet(data) {
+  const formData = new FormData();
+  for (const key in data) {
+    formData.append(`data[${key}]`, data[key]);
+  }
+
+  fetch("https://sheetdb.io/api/v1/0mhx24t0s867z", {
+    method: "POST",
+    body: formData,
+  })
+    .then((response) => response.json())
+    .then(() => {
+      alert("✅ Submitted with QR image and inspection link!");
+    })
+    .catch(() => {
+      showToast("❌ Submission failed.");
+    });
+}
